@@ -10,9 +10,9 @@ if cmd_folder not in sys.path:
 
 import feedparser #Importing feedparser
 import pickle     #Importing pickle
+import time
 
-
-def storeRecords(feeds):
+def storeToDB(feeds):
   '''A function that gets an argument: all the feeds urls into an array and stores it into a file on disk.'''
   with open('feedurls.data', 'wb') as data_file:
     pickle.dump(feeds, data_file)
@@ -25,15 +25,16 @@ def loadFromDB():
   return tmp
   
     
-def getRSS(feed_urls): 
+def getRSS(feed_urls):
+  '''A function that returns an array containing all entries for all the feed urls in feedurls.data file (date of creation, the title and the link)'''
   feed_results = {}
-  for url in feed_urls: #for each url in urls that were read from the DB
-    tmp = feedparser.parse(url) #create a tmp dictionary that contains all data from the RSSFeed
-    results_for_url = [] #creating an array that will hold the name and the link to the story
-    for entry in tmp.entries: 
-      results_for_url.append([entry.title, entry.link]) #append the story title and story link to as an array to the results array
-    feed_results[tmp.feed.title] = results_for_url #feed_results[title_of_the_feed] = all the results for that site feed
-  return feed_results #returning all the results for a feed
+  for url in feed_urls: 
+    tmp = feedparser.parse(url)
+    results_for_url = []
+    for entry in tmp.entries:
+      results_for_url.append([entry.updated_parsed, entry.title, entry.link])
+    feed_results[tmp.feed.title] = results_for_url[0:10]
+  return feed_results
 
 
 def printMenu():
@@ -57,20 +58,38 @@ results = {}
 while True:
 
   printMenu()
-  menu_input = int(input("Choose an option [1, 2, 3, 4]:"))
+  try:
+    menu_input = int(input("Choose an option [1, 2, 3, 4]: "))
+  except ValueError:
+    print("No such option, please try again.")
+    menu_input = int(input("Choose an option [1, 2, 3, 4]: "))
+  except KeyboardInterrupt:
+    sys.exit("Goodbye!")
 
   if menu_input == 4:
-    storeRecords(feed_urls)
+    storeToDB(feed_urls)
     sys.exit("Goodbye!")
+
   elif menu_input == 1:
     feed_url = str(input("Please enter the url to the RSS feed: "))
     feed_urls.append(feed_url)
     print("The Feed URL has been saved.")
+
   elif menu_input == 2:
     results = getRSS(feed_urls)
+    cnt = 0
     for feed_name, entries in results.items():
       print(80*"=")
       print("Feed for: ",feed_name)
       print(80*"=")
+      cnt += 1
       for entry in entries:
-        print("Title: {0}\t|\tLink to story: {1}".format(entry[0], entry[1]))
+        print("[Posted:] {0}\t[Title:] {1}\t[URL:] {2}".format(time.asctime(entry[0]), entry[1], entry[2]))
+
+  elif menu_input == 3:
+    cnt = 0
+    for url in feed_urls:
+      print("{0}. {1}".format(cnt+1, url))
+      cnt += 1
+    del_choose = int(input("Enter the number of the feed you want to delete:"))
+    del feed_urls[del_choose-1]    
