@@ -8,8 +8,8 @@ cmd_folder = os.path.dirname(os.path.abspath(__file__))
 if cmd_folder not in sys.path:
   sys.path.insert(0, cmd_folder)
 
-import feedparser #Importing feedparser
-import pickle     #Importing pickle
+import feedparser
+import pickle   
 import time
 
 def storeToDB(feeds):
@@ -27,24 +27,23 @@ def loadFromDB():
   
     
 def getRSS(feed_urls):
-  '''A function that returns an array containing all entries for all the feed urls in feedurls.data file (date of creation, the title and the URL)'''
+  '''A function that parses all the feed results for the URLs in feed_urls array and prints the results in human readable form.'''
   feed_results = {}
   for url in feed_urls: 
     tmp = feedparser.parse(url)
     results_for_url = []
     for entry in tmp.entries:
       results_for_url.append([entry.updated_parsed, entry.title, entry.link])
-    feed_results[tmp.feed.title] = results_for_url[0:10]
-  return feed_results
-
-
-def printResults(feed_results):
+    feed_results[tmp.feed.title] = results_for_url[0:10] 
   for feed_name, entries in feed_results.items():
     print(120*"=")
     print("Feed for: ",feed_name)
     print(120*"=")
     for entry in entries:
       print("[Posted:] {0}\t[Title:] {1}\t[URL:] {2}".format(time.asctime(entry[0]), entry[1], entry[2]))
+
+
+
 
 def printMenu():
   print("="*120)
@@ -59,7 +58,6 @@ def printMenu():
 
 
 def invokeMenu(feed_urls):
-  results = {}
   while True:
     printMenu()
     try:
@@ -80,9 +78,7 @@ def invokeMenu(feed_urls):
       print("The Feed URL has been saved.")
 
     elif menu_input == 2:
-      results = getRSS(feed_urls)
-      printResults(results)
-
+      getRSS(feed_urls)
 
     elif menu_input == 3:
       cnt = 0
@@ -103,9 +99,7 @@ except EOFError:
 if len(sys.argv) < 2:
   invokeMenu(feed_urls)
 elif sys.argv[1] == "-r":
-  results = {}
-  results = getRSS(feed_urls)
-  printResults(results)
+  getRSS(feed_urls)
 elif sys.argv[1] == "-a":
   feed_urls.append(sys.argv[2])
   print("URL: {0} added to database.".format(sys.argv[2]))
