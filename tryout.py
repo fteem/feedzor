@@ -2,47 +2,49 @@
 
 
 #Forcing feedparser module in path
-__file__ = "feedparser/feedparser.py"
 import os, sys
-cmd_folder = os.path.dirname(os.path.abspath(__file__))
-if cmd_folder not in sys.path:
-  sys.path.insert(0, cmd_folder)
+feedparser_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedparser")
+if feedparser_dir not in sys.path:
+  sys.path.insert(0, feedparser_dir)
 
 import feedparser
 import pickle   
 import time
+from collections import defaultdict
 
 def storeToDB(feeds):
-  '''A function that gets an argument: all the feeds urls into an array and stores it into a file on disk.'''
-  with open('feedurls.data', 'wb') as data_file:
-    pickle.dump(feeds, data_file)
-  print("All RSS Feeds stored!")    
+  '''A function that gets an argument: all the feeds urls into an list and stores it into a file on disk.'''
+  try:
+    with open('feedurls.data', 'wb') as data_file:
+      pickle.dump(feeds, data_file)
+    print("All RSS Feeds stored!")    
+  except IOError as ioerr:
+    print("Error occured: ", ioerr)
 
 
 def loadFromDB():
   '''A function that retrieves all the feeds urls from a file on disk, and returns it.'''
-  with open("feedurls.data", "rb") as data_file:
-    tmp = pickle.load(data_file)
+  try:
+    with open("feedurls.data", "rb") as data_file:
+      tmp = pickle.load(data_file)
+  except IOError:
+    tmp = []
   return tmp
   
     
 def getRSS(feed_urls):
   '''A function that parses all the feed results for the URLs in feed_urls array and prints the results in human readable form.'''
-  feed_results = {}
+  feed_results = defaultdict(list)
   for url in feed_urls: 
     tmp = feedparser.parse(url)
-    results_for_url = []
-    for entry in tmp.entries:
-      results_for_url.append([entry.updated_parsed, entry.title, entry.link])
-    feed_results[tmp.feed.title] = results_for_url[0:10] 
+    for entry in tmp.entries[:10]:
+      feed_results[tmp.feed.title].append([entry.updated_parsed, entry.title, entry.link])
   for feed_name, entries in feed_results.items():
     print(120*"=")
     print("Feed for: ",feed_name)
     print(120*"=")
     for entry in entries:
       print("[Posted:] {0}\t[Title:] {1}\t[URL:] {2}".format(time.asctime(entry[0]), entry[1], entry[2]))
-
-
 
 
 def printMenu():
@@ -60,13 +62,17 @@ def printMenu():
 def invokeMenu(feed_urls):
   while True:
     printMenu()
-    try:
-      menu_input = int(input("Choose an option [1, 2, 3, 4]: "))
-    except ValueError:
-      print("No such option, please try again.")
-      menu_input = int(input("Choose an option [1, 2, 3, 4]: "))
-    except KeyboardInterrupt:
-      sys.exit("Goodbye!")
+    while True:
+      try:
+        menu_input = int(input("Choose an option [1, 2, 3, 4]: "))
+        if 1 > menu_input > 4 :
+          raise ValueError
+      except ValueError:
+        print("No such option, please try again.")
+        continue
+      except KeyboardInterrupt:
+        sys.exit("Goodbye!")
+      break
 
     if menu_input == 4:
       storeToDB(feed_urls)
@@ -84,32 +90,34 @@ def invokeMenu(feed_urls):
       cnt = 0
       for url in feed_urls:
         print("{0}. {1}".format(cnt+1, url))
-        cnt += 1
-      del_choose = int(input("Enter the number of the feed you want to delete:"))
-      del feed_urls[del_choose-1]   
+      try:
+        del_choose = int(input("Enter the number of the feed you want to delete:"))
+        del feed_urls[del_choose-1]   
+      except KeyboardInterrupt:
+        break
+      except:
+        print("That record cannot be deleted/doesn't exist.")
 
- 
-try:
+
+def main(): 
   feed_urls = loadFromDB()
-except EOFError:
-  feed_urls = []
-  print("No RSS Feed entries. Please add some first.")
+  if len(sys.argv) < 2:
+    invokeMenu(feed_urls)
+  elif sys.argv[1] == "-r":
+    getRSS(feed_urls)
+  elif sys.argv[1] == "-a":
+    feed_urls.append(sys.argv[2])
+    print("URL: {0} added to database.".format(sys.argv[2]))
+    storeToDB(feed_urls)
+  elif sys.argv[1] == "-d":
+    print("Not available yet!")
+  elif sys.argv[1] == "--help" or sys.argv[1] == "-h":
+    print("Feedzor - a CLI RSS Reader")
+    print("Options:")
+    print("No Arguments : Loads an interactive menu.")
+    print("-r : Prints all RSS from DB")
+    print("-a <url to rss> : Adds an URL to the database.")
+    print("-d <url to rss> : Deletes that url from the database.")
 
-
-if len(sys.argv) < 2:
-  invokeMenu(feed_urls)
-elif sys.argv[1] == "-r":
-  getRSS(feed_urls)
-elif sys.argv[1] == "-a":
-  feed_urls.append(sys.argv[2])
-  print("URL: {0} added to database.".format(sys.argv[2]))
-  storeToDB(feed_urls)
-elif sys.argv[1] == "-d":
-  print("Not available yet!")
-elif sys.argv[1] == "--help" or sys.argv[1] == "-h":
-  print("Feedzor - a CLI RSS Reader")
-  print("Options:")
-  print("No Arguments : Loads an interactive menu.")
-  print("-r : Prints all RSS from DB")
-  print("-a <url to rss> : Adds an URL to the database.")
-  print("-d <url to rss> : Deletes that url from the database.")
+if __name__ == "__main__":
+  main()
